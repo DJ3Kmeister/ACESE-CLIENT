@@ -1,0 +1,313 @@
+import { useState } from 'react';
+import { Save, School, User, Phone, Mail, Server, CheckCircle, AlertCircle, Edit3, Lock } from 'lucide-react';
+import type { SchoolConfig, SecteurInfo } from '../types';
+
+interface ConfigPanelProps {
+  config: SchoolConfig;
+  onSave: (config: SchoolConfig) => void;
+  isConfigured: boolean;
+  secteurs: SecteurInfo[];
+}
+
+export function ConfigPanel({ config, onSave, isConfigured, secteurs }: ConfigPanelProps) {
+  const [form, setForm] = useState<SchoolConfig>(config);
+  const [errors, setErrors] = useState<Partial<Record<keyof SchoolConfig, string>>>({});
+
+  // Get schools for the selected sector
+  const selectedSecteur = secteurs.find(s => s.nom === form.secteur_pedagogique);
+  const ecoles = selectedSecteur?.ecoles || [];
+
+  const handleChange = (field: keyof SchoolConfig, value: string) => {
+    // If changing sector, reset school
+    if (field === 'secteur_pedagogique') {
+      setForm(prev => ({ ...prev, [field]: value, nom_ecole: '' }));
+    } else {
+      setForm(prev => ({ ...prev, [field]: value }));
+    }
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: undefined }));
+    }
+  };
+
+  const handlePhoneChange = (field: 'contact1' | 'contact2', value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 10);
+    setForm(prev => ({ ...prev, [field]: digits }));
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: undefined }));
+    }
+  };
+
+  const validate = (): boolean => {
+    const newErrors: Partial<Record<keyof SchoolConfig, string>> = {};
+    if (!form.secteur_pedagogique.trim()) newErrors.secteur_pedagogique = 'Secteur requis';
+    if (!form.nom_ecole.trim()) newErrors.nom_ecole = 'Nom de l\'école requis';
+    if (!form.nom_directeur.trim()) newErrors.nom_directeur = 'Nom du directeur requis';
+    if (!form.prenoms_directeur.trim()) newErrors.prenoms_directeur = 'Prénoms requis';
+    if (!form.contact1 || !/^\d{10}$/.test(form.contact1)) {
+      newErrors.contact1 = '10 chiffres requis';
+    } else if (!/^(07|05|01)/.test(form.contact1)) {
+      newErrors.contact1 = 'Doit commencer par 07, 05 ou 01';
+    }
+    if (form.contact2 && !/^\d{10}$/.test(form.contact2)) {
+      newErrors.contact2 = '10 chiffres requis';
+    } else if (form.contact2 && !/^(07|05|01)/.test(form.contact2)) {
+      newErrors.contact2 = 'Doit commencer par 07, 05 ou 01';
+    }
+    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      newErrors.email = 'Email invalide';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (validate()) {
+      onSave(form);
+    }
+  };
+
+  const inputClass = (field: keyof SchoolConfig) =>
+    `w-full px-4 py-2.5 rounded-lg border text-sm transition-colors ${
+      errors[field]
+        ? 'border-red-400 bg-red-50 focus:border-red-500'
+        : 'border-gray-300 bg-white focus:border-ci-green'
+    }`;
+
+  const lockedInputClass = 'w-full px-4 py-2.5 rounded-lg border text-sm bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed';
+
+  return (
+    <div className="space-y-6">
+      {/* Status banner */}
+      <div className={`flex items-center gap-3 p-4 rounded-xl ${
+        isConfigured ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'
+      }`}>
+        {isConfigured ? (
+          <>
+            <CheckCircle size={24} className="text-green-500 shrink-0" />
+            <div>
+              <p className="font-semibold text-green-800">École configurée</p>
+              <p className="text-sm text-green-600">
+                {config.nom_ecole} — {config.secteur_pedagogique}
+              </p>
+            </div>
+            <Edit3 size={18} className="text-green-500 ml-auto shrink-0" />
+          </>
+        ) : (
+          <>
+            <AlertCircle size={24} className="text-amber-500 shrink-0" />
+            <div>
+              <p className="font-semibold text-amber-800">Configuration requise</p>
+              <p className="text-sm text-amber-600">Remplissez les informations de votre école pour commencer</p>
+            </div>
+          </>
+        )}
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* School info section */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="bg-gradient-to-r from-ci-green to-ci-green-light px-5 py-3 flex items-center gap-2">
+            <School size={20} className="text-white" />
+            <h2 className="font-semibold text-white">Informations de l'école</h2>
+          </div>
+          <div className="p-5 space-y-4">
+            {/* DRENAET + IEPP (readonly) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                  DRENAET *
+                  <Lock size={12} className="text-gray-400" />
+                </label>
+                <input
+                  type="text"
+                  value={form.drenaet}
+                  readOnly
+                  className={lockedInputClass}
+                />
+                <p className="text-xs text-gray-400 mt-1">Champ automatique — non modifiable</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                  IEPP *
+                  <Lock size={12} className="text-gray-400" />
+                </label>
+                <input
+                  type="text"
+                  value={form.iepp}
+                  readOnly
+                  className={lockedInputClass}
+                />
+                <p className="text-xs text-gray-400 mt-1">Champ automatique — non modifiable</p>
+              </div>
+            </div>
+            {/* Secteur pédagogique (dropdown from server) + Nom de l'école (dropdown from sector) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Secteur pédagogique *</label>
+                <select
+                  value={form.secteur_pedagogique}
+                  onChange={e => handleChange('secteur_pedagogique', e.target.value)}
+                  className={inputClass('secteur_pedagogique')}
+                >
+                  <option value="">— Sélectionner un secteur —</option>
+                  {secteurs.map(s => (
+                    <option key={s.id} value={s.nom}>{s.nom}</option>
+                  ))}
+                </select>
+                {errors.secteur_pedagogique && <p className="text-xs text-red-500 mt-1">{errors.secteur_pedagogique}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nom de l'école *</label>
+                {ecoles.length > 0 ? (
+                  <select
+                    value={form.nom_ecole}
+                    onChange={e => handleChange('nom_ecole', e.target.value)}
+                    className={inputClass('nom_ecole')}
+                  >
+                    <option value="">— Sélectionner votre école —</option>
+                    {ecoles.map(e => (
+                      <option key={e.id} value={e.nom}>{e.nom}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={form.nom_ecole}
+                    onChange={e => handleChange('nom_ecole', e.target.value)}
+                    className={inputClass('nom_ecole')}
+                    placeholder="EPP GNATO"
+                  />
+                )}
+                {ecoles.length === 0 && (
+                  <p className="text-xs text-amber-500 mt-1">⚠️ Aucune école configurée pour ce secteur. Saisissez le nom manuellement.</p>
+                )}
+                {errors.nom_ecole && <p className="text-xs text-red-500 mt-1">{errors.nom_ecole}</p>}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Director info section */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="bg-gradient-to-r from-ci-orange to-amber-500 px-5 py-3 flex items-center gap-2">
+            <User size={20} className="text-white" />
+            <h2 className="font-semibold text-white">Informations du directeur</h2>
+          </div>
+          <div className="p-5 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nom du directeur *</label>
+                <input
+                  type="text"
+                  value={form.nom_directeur}
+                  onChange={e => handleChange('nom_directeur', e.target.value.toUpperCase())}
+                  className={inputClass('nom_directeur')}
+                  placeholder="Ex: KONÉ"
+                />
+                {errors.nom_directeur && <p className="text-xs text-red-500 mt-1">{errors.nom_directeur}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Prénoms du directeur *</label>
+                <input
+                  type="text"
+                  value={form.prenoms_directeur}
+                  onChange={e => handleChange('prenoms_directeur', e.target.value)}
+                  className={inputClass('prenoms_directeur')}
+                  placeholder="Ex: Amadou"
+                />
+                {errors.prenoms_directeur && <p className="text-xs text-red-500 mt-1">{errors.prenoms_directeur}</p>}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Contact info section */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-5 py-3 flex items-center gap-2">
+            <Phone size={20} className="text-white" />
+            <h2 className="font-semibold text-white">Contacts</h2>
+          </div>
+          <div className="p-5 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Contact 1 *</label>
+                <div className="relative">
+                  <input
+                    type="tel"
+                    value={form.contact1}
+                    onChange={e => handlePhoneChange('contact1', e.target.value)}
+                    className={inputClass('contact1')}
+                    placeholder="07 XX XX XX XX"
+                    maxLength={10}
+                  />
+                  {form.contact1.length === 10 && /^(07|05|01)/.test(form.contact1) && <CheckCircle size={16} className="absolute right-3 top-3 text-green-500" />}
+                </div>
+                {errors.contact1 && <p className="text-xs text-red-500 mt-1">{errors.contact1}</p>}
+                <p className="text-xs text-gray-400 mt-1">10 chiffres — doit commencer par 07, 05 ou 01</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Contact 2 (facultatif)</label>
+                <input
+                  type="tel"
+                  value={form.contact2}
+                  onChange={e => handlePhoneChange('contact2', e.target.value)}
+                  className={inputClass('contact2')}
+                  placeholder="05 XX XX XX XX"
+                  maxLength={10}
+                />
+                {errors.contact2 && <p className="text-xs text-red-500 mt-1">{errors.contact2}</p>}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                <Mail size={14} />
+                Email (facultatif)
+              </label>
+              <input
+                type="email"
+                value={form.email}
+                onChange={e => handleChange('email', e.target.value)}
+                className={inputClass('email')}
+                placeholder="directeur@exemple.ci"
+              />
+              {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
+            </div>
+          </div>
+        </div>
+
+        {/* Server config section — READ ONLY */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="bg-gradient-to-r from-purple-500 to-purple-600 px-5 py-3 flex items-center gap-2">
+            <Server size={20} className="text-white" />
+            <h2 className="font-semibold text-white">Serveur de synchronisation</h2>
+          </div>
+          <div className="p-5">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                URL du serveur
+                <Lock size={12} className="text-gray-400" />
+              </label>
+              <input
+                type="url"
+                value={form.serverUrl}
+                readOnly
+                className={lockedInputClass}
+              />
+              <p className="text-xs text-gray-400 mt-1">Adresse du serveur ACESE — non modifiable</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Submit button */}
+        <button
+          type="submit"
+          className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-ci-green to-ci-green-light text-white font-semibold rounded-xl shadow-lg shadow-green-200 hover:shadow-xl hover:scale-[1.01] active:scale-[0.99] transition-all"
+        >
+          <Save size={20} />
+          <span>{isConfigured ? 'Mettre à jour la configuration' : 'Enregistrer la configuration'}</span>
+        </button>
+      </form>
+    </div>
+  );
+}

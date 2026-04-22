@@ -1,0 +1,20 @@
+{
+  "name": "ACESE IEPP GRABO - Collecte des élèves",
+  "short_name": "ACESE-IEPP",
+  "description": "Application de collecte des informations des élèves pour l'enseignement primaire public de Grabo",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ],
+  "categories": ["education", "productivity"],
+  "lang": "fr"
+}
