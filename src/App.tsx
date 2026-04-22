@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Settings, UserPlus, List, BarChart3, RefreshCw,
-  GraduationCap, Wifi, WifiOff, Menu, X, Download
+  GraduationCap, Wifi, WifiOff, Menu, X, Download, AlertTriangle
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import type { SchoolConfig, Eleve, TabType, ToastMessage, SecteurInfo } from './types';
@@ -42,6 +42,7 @@ export default function App() {
   const [isConfigured, setIsConfigured] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [secteurs, setSecteurs] = useState<SecteurInfo[]>(DEFAULT_SECTEURS);
+  const [newVersionAvailable, setNewVersionAvailable] = useState(false);
 
   // Load saved data on mount
   useEffect(() => {
@@ -58,6 +59,28 @@ export default function App() {
     const savedSecteurs = localStorage.getItem('acese_secteurs');
     if (savedSecteurs) {
       setSecteurs(JSON.parse(savedSecteurs));
+    }
+  }, []);
+
+  // Detect new version via Service Worker
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistration().then(function(reg) {
+        if (reg) {
+          reg.addEventListener('updatefound', function() {
+            const newWorker = reg.installing;
+            if (newWorker) {
+              newWorker.addEventListener('statechange', function() {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  setNewVersionAvailable(true);
+                }
+              });
+            }
+          });
+          // Force check for update on load
+          reg.update();
+        }
+      });
     }
   }, []);
 
@@ -287,6 +310,20 @@ export default function App() {
           )}
         </div>
       </header>
+
+      {/* New version banner */}
+      {newVersionAvailable && (
+        <div className="bg-amber-500 text-white text-center py-2 px-4 text-sm font-medium flex items-center justify-center gap-3 animate-slide-down">
+          <AlertTriangle size={16} />
+          <span>Une nouvelle version est disponible !</span>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-3 py-1 bg-white text-amber-600 rounded-md font-bold text-xs hover:bg-amber-50 transition-colors"
+          >
+            Mettre à jour maintenant
+          </button>
+        </div>
+      )}
 
       {/* Mobile menu dropdown */}
       {menuOpen && (
