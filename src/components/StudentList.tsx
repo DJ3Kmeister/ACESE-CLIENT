@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { List, Search, Trash2, User, AlertTriangle, Eye, X, Download } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { List, Search, Trash2, User, AlertTriangle, Eye, X, Download, Archive, Printer } from 'lucide-react';
 import type { Eleve, SchoolConfig } from '../types';
 
 interface StudentListProps {
@@ -8,12 +8,14 @@ interface StudentListProps {
   onClear: () => void;
   config: SchoolConfig;
   onExport: () => void;
+  onArchiveAndClear: () => void;
 }
 
-export function StudentList({ eleves, onRemove, onClear, config, onExport }: StudentListProps) {
+export function StudentList({ eleves, onRemove, onClear, config, onExport, onArchiveAndClear }: StudentListProps) {
   const [search, setSearch] = useState('');
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [viewStudent, setViewStudent] = useState<Eleve | null>(null);
+  const printRef = useRef<HTMLDivElement>(null);
 
   const filtered = eleves.filter(e => {
     const q = search.toLowerCase();
@@ -22,7 +24,6 @@ export function StudentList({ eleves, onRemove, onClear, config, onExport }: Stu
            e.classe.toLowerCase().includes(q);
   });
 
-  // Group by class
   const grouped = filtered.reduce<Record<string, Eleve[]>>((acc, eleve) => {
     const key = eleve.classe || 'Non classé';
     if (!acc[key]) acc[key] = [];
@@ -38,6 +39,60 @@ export function StudentList({ eleves, onRemove, onClear, config, onExport }: Stu
       setConfirmDelete(id);
       setTimeout(() => setConfirmDelete(null), 3000);
     }
+  };
+
+  const garcons = eleves.filter(e => e.sexe === 'M').length;
+  const filles = eleves.filter(e => e.sexe === 'F').length;
+
+  const printFiche = () => {
+    if (!viewStudent) return;
+    const win = window.open('', '_blank', 'width=400,height=700');
+    if (!win) return;
+    win.document.write(`
+      <!DOCTYPE html>
+      <html lang="fr">
+      <head><meta charset="UTF-8"><title>Fiche élève</title>
+      <style>
+        body { font-family: 'Segoe UI', sans-serif; padding: 30px; max-width: 380px; margin: 0 auto; color: #1a1a1a; }
+        .header { text-align: center; border-bottom: 3px solid #2D6A4F; padding-bottom: 15px; margin-bottom: 20px; }
+        .header h1 { font-size: 18px; color: #2D6A4F; margin: 0 0 5px; }
+        .header p { font-size: 11px; color: #666; margin: 0; }
+        .name { font-size: 20px; font-weight: bold; text-align: center; margin: 15px 0; color: #1B4332; }
+        .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; font-size: 13px; }
+        .row .label { color: #666; }
+        .row .value { font-weight: 600; text-align: right; }
+        .section { margin: 15px 0; padding: 10px; background: #f9f9f9; border-radius: 8px; }
+        .section h3 { font-size: 13px; color: #2D6A4F; margin: 0 0 8px; }
+        .footer { text-align: center; font-size: 10px; color: #999; margin-top: 25px; border-top: 1px solid #eee; padding-top: 10px; }
+        @media print { body { padding: 10px; } }
+      </style></head>
+      <body>
+        <div class="header">
+          <h1>📄 Fiche Élève</h1>
+          <p>ACESE IEPP GRABO — ${config.nom_ecole || ''}</p>
+          <p>${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+        </div>
+        <div class="name">${viewStudent.nom} ${viewStudent.prenoms}</div>
+        <div class="row"><span class="label">Sexe</span><span class="value">${viewStudent.sexe === 'M' ? '♂ Masculin' : '♀ Féminin'}</span></div>
+        <div class="row"><span class="label">Date de naissance</span><span class="value">${viewStudent.date_naissance_probable}</span></div>
+        <div class="row"><span class="label">Classe</span><span class="value">${viewStudent.classe}</span></div>
+        <div class="section"><h3>👨 Père</h3>
+          <div class="row"><span class="label">Nom</span><span class="value">${viewStudent.nom_pere}</span></div>
+          <div class="row"><span class="label">Téléphone</span><span class="value">${viewStudent.numero_pere}</span></div>
+        </div>
+        <div class="section"><h3>👩 Mère</h3>
+          <div class="row"><span class="label">Nom</span><span class="value">${viewStudent.nom_mere}</span></div>
+          <div class="row"><span class="label">Téléphone</span><span class="value">${viewStudent.numero_mere}</span></div>
+        </div>
+        <div class="section"><h3>🤝 Témoin</h3>
+          <div class="row"><span class="label">Nom</span><span class="value">${viewStudent.nom_temoin}</span></div>
+          <div class="row"><span class="label">Téléphone</span><span class="value">${viewStudent.numero_temoin}</span></div>
+        </div>
+        <div class="footer">ACESE IEPP GRABO — DRENAET San-Pédro<br>Fiche générée le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</div>
+        <script>window.onload=function(){window.print();}<\/script>
+      </body></html>
+    `);
+    win.document.close();
   };
 
   if (eleves.length === 0) {
@@ -71,14 +126,21 @@ export function StudentList({ eleves, onRemove, onClear, config, onExport }: Stu
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors"
           >
             <Download size={14} />
-            Exporter Excel
+            Exporter
+          </button>
+          <button
+            onClick={onArchiveAndClear}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
+          >
+            <Archive size={14} />
+            Archiver & vider
           </button>
           <button
             onClick={onClear}
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
           >
             <Trash2 size={14} />
-            Tout supprimer
+            Vider
           </button>
         </div>
       </div>
@@ -95,23 +157,19 @@ export function StudentList({ eleves, onRemove, onClear, config, onExport }: Stu
         />
       </div>
 
-      {/* Stats summary */}
+      {/* Stats summary — IMPROVED with big counters */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
-          <p className="text-2xl font-bold text-blue-600">{eleves.length}</p>
-          <p className="text-xs text-blue-500">Total</p>
+        <div className="bg-gradient-to-br from-ci-green to-ci-green-light rounded-xl p-4 text-white text-center shadow-md">
+          <p className="text-3xl font-extrabold">{eleves.length}</p>
+          <p className="text-[10px] uppercase tracking-wider text-green-200 font-medium">Total</p>
         </div>
-        <div className="bg-sky-50 border border-sky-200 rounded-lg p-3 text-center">
-          <p className="text-2xl font-bold text-sky-600">
-            {eleves.filter(e => e.sexe === 'M').length}
-          </p>
-          <p className="text-xs text-sky-500">Garçons</p>
+        <div className="bg-gradient-to-br from-sky-500 to-sky-600 rounded-xl p-4 text-white text-center shadow-md">
+          <p className="text-3xl font-extrabold">{garcons}</p>
+          <p className="text-[10px] uppercase tracking-wider text-sky-200 font-medium">Garçons</p>
         </div>
-        <div className="bg-pink-50 border border-pink-200 rounded-lg p-3 text-center">
-          <p className="text-2xl font-bold text-pink-600">
-            {eleves.filter(e => e.sexe === 'F').length}
-          </p>
-          <p className="text-xs text-pink-500">Filles</p>
+        <div className="bg-gradient-to-br from-pink-500 to-pink-600 rounded-xl p-4 text-white text-center shadow-md">
+          <p className="text-3xl font-extrabold">{filles}</p>
+          <p className="text-[10px] uppercase tracking-wider text-pink-200 font-medium">Filles</p>
         </div>
       </div>
 
@@ -196,9 +254,18 @@ export function StudentList({ eleves, onRemove, onClear, config, onExport }: Stu
                   <p className="text-sm text-green-200">Classe: {viewStudent.classe}</p>
                 </div>
               </div>
-              <button onClick={() => setViewStudent(null)} className="text-white/80 hover:text-white">
-                <X size={20} />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={printFiche}
+                  className="text-white/80 hover:text-white p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+                  title="Imprimer la fiche"
+                >
+                  <Printer size={18} />
+                </button>
+                <button onClick={() => setViewStudent(null)} className="text-white/80 hover:text-white">
+                  <X size={20} />
+                </button>
+              </div>
             </div>
             <div className="p-5 space-y-4 text-sm">
               <div className="grid grid-cols-2 gap-3">
@@ -231,6 +298,9 @@ export function StudentList({ eleves, onRemove, onClear, config, onExport }: Stu
           </div>
         </div>
       )}
+
+      {/* Hidden print ref */}
+      <div ref={printRef} className="hidden" />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Save, School, User, Phone, Mail, Server, CheckCircle, AlertCircle, Edit3, Lock } from 'lucide-react';
+import { Save, School, User, Phone, Mail, CheckCircle, AlertCircle, Edit3, Lock } from 'lucide-react';
 import type { SchoolConfig, SecteurInfo } from '../types';
 
 interface ConfigPanelProps {
@@ -272,29 +272,6 @@ export function ConfigPanel({ config, onSave, isConfigured, secteurs }: ConfigPa
                 placeholder="directeur@exemple.ci"
               />
               {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
-            </div>
-          </div>
-        </div>
-
-        {/* Server config section — READ ONLY */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="bg-gradient-to-r from-purple-500 to-purple-600 px-5 py-3 flex items-center gap-2">
-            <Server size={20} className="text-white" />
-            <h2 className="font-semibold text-white">Serveur de synchronisation</h2>
-          </div>
-          <div className="p-5">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                URL du serveur
-                <Lock size={12} className="text-gray-400" />
-              </label>
-              <input
-                type="url"
-                value={form.serverUrl}
-                readOnly
-                className={lockedInputClass}
-              />
-              <p className="text-xs text-gray-400 mt-1">Adresse du serveur ACESE — non modifiable</p>
             </div>
           </div>
         </div>

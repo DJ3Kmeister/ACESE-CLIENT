@@ -106,14 +106,6 @@ export function SyncPanel({ eleves, config, isOnline, isConfigured, onSync, onEx
         </div>
       </div>
 
-      {/* Server URL display */}
-      <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
-        <p className="text-xs text-gray-500 mb-1">Serveur cible</p>
-        <p className="text-sm font-mono text-gray-700 bg-white rounded-lg px-3 py-2 border border-gray-200">
-          {config.serverUrl}/api/eleves
-        </p>
-      </div>
-
       {/* Export button before sync */}
       {eleves.length > 0 && (
         <button

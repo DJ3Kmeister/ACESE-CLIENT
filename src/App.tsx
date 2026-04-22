@@ -11,6 +11,7 @@ import { StudentList } from './components/StudentList';
 import { StatsPanel } from './components/StatsPanel';
 import { SyncPanel } from './components/SyncPanel';
 import { Toast } from './components/Toast';
+import { TutorialOverlay } from './components/TutorialOverlay';
 
 const DEFAULT_CONFIG: SchoolConfig = {
   drenaet: 'DRENAET San-Pédro',
@@ -43,6 +44,11 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [secteurs, setSecteurs] = useState<SecteurInfo[]>(DEFAULT_SECTEURS);
   const [newVersionAvailable, setNewVersionAvailable] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(() => {
+    return !localStorage.getItem('acese_tutorial_done');
+  });
+  const [contactInfo, setContactInfo] = useState<{ contact_whatsapp?: string; contact_email?: string; contact_nom?: string }>({});
+  const [showPendingAlert, setShowPendingAlert] = useState(false);
 
   // Load saved data on mount
   useEffect(() => {
@@ -54,7 +60,12 @@ export default function App() {
     }
     const savedEleves = localStorage.getItem('acese_eleves');
     if (savedEleves) {
-      setEleves(JSON.parse(savedEleves));
+      const parsed = JSON.parse(savedEleves);
+      setEleves(parsed);
+      // Show alert if there are unsent students
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        setShowPendingAlert(true);
+      }
     }
     const savedSecteurs = localStorage.getItem('acese_secteurs');
     if (savedSecteurs) {
@@ -83,6 +94,21 @@ export default function App() {
       });
     }
   }, []);
+
+  // Fetch contact info from server
+  useEffect(() => {
+    if (!isOnline) return;
+    const fetchContact = async () => {
+      try {
+        const res = await fetch(`${DEFAULT_CONFIG.serverUrl}/api/config`);
+        if (res.ok) {
+          const data = await res.json();
+          setContactInfo(data);
+        }
+      } catch { /* ignore */ }
+    };
+    fetchContact();
+  }, [isOnline]);
 
   // Fetch secteurs from server when online
   useEffect(() => {
@@ -160,14 +186,9 @@ export default function App() {
     showToast('info', 'Tous les élèves ont été supprimés');
   }, [saveEleves, showToast]);
 
-  // Export local Excel
-  const exportLocal = useCallback(() => {
-    if (eleves.length === 0) {
-      showToast('error', 'Aucun élève à exporter');
-      return;
-    }
-
-    const rows = eleves.map((e, idx) => ({
+  // Export local Excel (returns filename for archive)
+  const doExport = useCallback((students: Eleve[]): string => {
+    const rows = students.map((e, idx) => ({
       'N°': idx + 1,
       'Nom': e.nom,
       'Prénoms': e.prenoms,
@@ -198,12 +219,52 @@ export default function App() {
     const fileName = `Liste_Eleves_${schoolName}_${dateStr}_${timeStr}.xlsx`;
 
     XLSX.writeFile(wb, fileName);
+    return fileName;
+  }, [config]);
+
+  const exportLocal = useCallback(() => {
+    if (eleves.length === 0) {
+      showToast('error', 'Aucun élève à exporter');
+      return;
+    }
+    const fileName = doExport(eleves);
     showToast('success', `Fichier "${fileName}" exporté avec succès !`);
-  }, [eleves, config, showToast]);
+  }, [eleves, doExport, showToast]);
+
+  // Archive and clear: export then clear
+  const archiveAndClear = useCallback(() => {
+    if (eleves.length === 0) return;
+    const fileName = doExport(eleves);
+    saveEleves([]);
+    showToast('success', `Archive "${fileName}" sauvegardée — Liste vidée`);
+  }, [eleves, doExport, saveEleves, showToast]);
 
   // Sync to server
   const syncToServer = useCallback(async (): Promise<boolean> => {
     if (!isConfigured || eleves.length === 0) return false;
+
+    // Check for duplicates on the server before sending
+    const duplicatesFound: string[] = [];
+    for (const eleve of eleves) {
+      try {
+        const checkRes = await fetch(`${config.serverUrl}/api/check-duplicate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nom: eleve.nom, prenoms: eleve.prenoms }),
+        });
+        if (checkRes.ok) {
+          const checkData = await checkRes.json();
+          if (checkData.found) {
+            duplicatesFound.push(`${eleve.nom} ${eleve.prenoms} (déjà à ${checkData.duplicates[0].ecole})`);
+          }
+        }
+      } catch { /* ignore network errors during check */ }
+    }
+
+    if (duplicatesFound.length > 0) {
+      showToast('error', `⚠️ ${duplicatesFound.length} doublon(s) détecté(s) sur le serveur : ${duplicatesFound.slice(0, 3).join(', ')}${duplicatesFound.length > 3 ? '...' : ''}. Supprimez-les de votre liste.`);
+      return false;
+    }
 
     const payload = {
       drenaet: config.drenaet,
@@ -245,13 +306,18 @@ export default function App() {
     { id: 'ajouter', label: 'Ajouter', icon: <UserPlus size={20} /> },
     { id: 'liste', label: 'Liste', icon: <List size={20} /> },
     { id: 'stats', label: 'Stats', icon: <BarChart3 size={20} /> },
-    { id: 'sync', label: 'Sync', icon: <RefreshCw size={20} /> },
+    { id: 'sync', label: eleves.length > 0 ? `Sync (${eleves.length})` : 'Sync', icon: <RefreshCw size={20} /> },
   ];
 
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
     setMenuOpen(false);
   };
+
+  const completeTutorial = useCallback(() => {
+    localStorage.setItem('acese_tutorial_done', 'true');
+    setShowTutorial(false);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-orange-50">
@@ -310,6 +376,32 @@ export default function App() {
           )}
         </div>
       </header>
+
+      {/* Pending data alert */}
+      {showPendingAlert && eleves.length > 0 && (
+        <div className="bg-red-50 border-b border-red-200 text-center py-3 px-4 animate-slide-down">
+          <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
+            <p className="text-sm text-red-700 font-medium flex items-center gap-2">
+              <AlertTriangle size={16} className="text-red-500 shrink-0" />
+              <span><strong>{eleves.length}</strong> élève(s) enregistré(s) mais <strong>pas encore envoyé(s)</strong> au serveur.</span>
+            </p>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => { setShowPendingAlert(false); setActiveTab('sync'); }}
+                className="px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs font-bold hover:bg-red-600 transition-colors"
+              >
+                Envoyer maintenant →
+              </button>
+              <button
+                onClick={() => setShowPendingAlert(false)}
+                className="text-red-400 hover:text-red-600 text-lg leading-none"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* New version banner */}
       {newVersionAvailable && (
@@ -378,7 +470,7 @@ export default function App() {
       </div>
 
       {/* Main content */}
-      <main className="max-w-4xl mx-auto px-4 py-6 pb-24 md:pb-6">
+      <main className="max-w-4xl mx-auto px-4 py-6 pb-24 md:pb-6 flex-1">
         <div className="animate-slide-up">
           {activeTab === 'config' && (
             <ConfigPanel
@@ -401,6 +493,7 @@ export default function App() {
               onClear={clearEleves}
               config={config}
               onExport={exportLocal}
+              onArchiveAndClear={archiveAndClear}
             />
           )}
           {activeTab === 'stats' && (
@@ -418,6 +511,53 @@ export default function App() {
           )}
         </div>
       </main>
+
+      {/* Footer — signature + contact */}
+      <footer className="bg-white border-t border-gray-200 py-6 px-4 mb-16 md:mb-0">
+        <div className="max-w-4xl mx-auto text-center space-y-4">
+          {/* Signature */}
+          <div>
+            <p className="text-sm font-semibold text-gray-700">
+              WebApp powered by <span className="text-ci-green font-bold">DJ3K S3PH1R0TH</span>
+            </p>
+            <p className="text-[11px] text-gray-400 mt-0.5">
+              ACESE IEPP GRABO — DRENAET San-Pédro — Côte d'Ivoire
+            </p>
+          </div>
+
+          {/* Contact support */}
+          {(contactInfo.contact_whatsapp || contactInfo.contact_email) && (
+            <div className="inline-flex flex-col items-center gap-1.5 bg-amber-50 border border-amber-200 rounded-xl px-5 py-3">
+              <p className="text-xs font-semibold text-amber-800 flex items-center gap-1">
+                📞 Besoin d'aide ou un bug ? Contactez :
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-amber-700">
+                {contactInfo.contact_nom && (
+                  <span className="font-medium">{contactInfo.contact_nom}</span>
+                )}
+                {contactInfo.contact_whatsapp && (
+                  <a
+                    href={`https://wa.me/${contactInfo.contact_whatsapp.replace(/\D/g, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 bg-green-500 text-white px-2.5 py-1 rounded-full hover:bg-green-600 transition-colors font-medium"
+                  >
+                    💬 WhatsApp
+                  </a>
+                )}
+                {contactInfo.contact_email && (
+                  <a
+                    href={`mailto:${contactInfo.contact_email}`}
+                    className="flex items-center gap-1 bg-blue-500 text-white px-2.5 py-1 rounded-full hover:bg-blue-600 transition-colors font-medium"
+                  >
+                    ✉️ Email
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </footer>
 
       {/* Mobile bottom navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-40">
@@ -448,6 +588,11 @@ export default function App() {
           <Toast key={toast.id} message={toast} />
         ))}
       </div>
+
+      {/* Tutorial overlay (first visit only) */}
+      {showTutorial && (
+        <TutorialOverlay onComplete={completeTutorial} />
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { UserPlus, AlertCircle, Calendar } from 'lucide-react';
+import { UserPlus, AlertCircle, Calendar, AlertTriangle } from 'lucide-react';
 import type { Eleve } from '../types';
 
 interface StudentFormProps {
@@ -25,9 +25,26 @@ const CLASSES = [
   'CP1', 'CP2', 'CE1', 'CE2', 'CM1', 'CM2'
 ];
 
+function checkLocalDuplicate(form: Omit<Eleve, 'id'>): Eleve | null {
+  const saved = localStorage.getItem('acese_eleves');
+  if (!saved) return null;
+  try {
+    const eleves: Eleve[] = JSON.parse(saved);
+    const nom = form.nom.trim().toUpperCase();
+    const prenoms = form.prenoms.trim().toUpperCase();
+    return eleves.find(e =>
+      e.nom.trim().toUpperCase() === nom &&
+      e.prenoms.trim().toUpperCase() === prenoms
+    ) || null;
+  } catch {
+    return null;
+  }
+}
+
 export function StudentForm({ onAdd, isConfigured }: StudentFormProps) {
   const [form, setForm] = useState<Omit<Eleve, 'id'>>(emptyEleve);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
   const datePickerRef = useRef<HTMLInputElement>(null);
 
   if (!isConfigured) {
@@ -53,6 +70,8 @@ export function StudentForm({ onAdd, isConfigured }: StudentFormProps) {
         return next;
       });
     }
+    // Clear duplicate warning on any change
+    if (duplicateWarning) setDuplicateWarning(null);
   };
 
   const handlePhoneChange = (field: keyof Omit<Eleve, 'id'>, value: string) => {
@@ -61,19 +80,16 @@ export function StudentForm({ onAdd, isConfigured }: StudentFormProps) {
   };
 
   const handleDateTextChange = (value: string) => {
-    // Strip non-digits
     const digits = value.replace(/\D/g, '').slice(0, 8);
-
     let formatted = '';
     if (digits.length > 0) formatted = digits.slice(0, 2);
     if (digits.length > 2) formatted += '/' + digits.slice(2, 4);
     if (digits.length > 4) formatted += '/' + digits.slice(4, 8);
-
     handleChange('date_naissance_probable', formatted);
   };
 
   const handleDatePickerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value; // yyyy-mm-dd
+    const val = e.target.value;
     if (val) {
       const [y, m, d] = val.split('-');
       handleChange('date_naissance_probable', `${d}/${m}/${y}`);
@@ -98,30 +114,34 @@ export function StudentForm({ onAdd, isConfigured }: StudentFormProps) {
     }
     if (!form.classe) newErrors.classe = 'Classe requise';
     if (!form.nom_pere.trim()) newErrors.nom_pere = 'Nom du père requis';
-
     const errPere = validatePhone(form.numero_pere, 'Numéro du père');
     if (errPere) newErrors.numero_pere = errPere;
-
     if (!form.nom_mere.trim()) newErrors.nom_mere = 'Nom de la mère requis';
-
     const errMere = validatePhone(form.numero_mere, 'Numéro de la mère');
     if (errMere) newErrors.numero_mere = errMere;
-
     if (!form.nom_temoin.trim()) newErrors.nom_temoin = 'Nom du témoin requis';
-
     const errTemoin = validatePhone(form.numero_temoin, 'Numéro du témoin');
     if (errTemoin) newErrors.numero_temoin = errTemoin;
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (validate()) {
-      onAdd({ ...form, id: Date.now().toString() + Math.random().toString(36).slice(2) });
-      setForm(emptyEleve);
+    if (!validate()) return;
+
+    // Check local duplicates
+    const localDup = checkLocalDuplicate(form);
+    if (localDup) {
+      setDuplicateWarning(
+        `⚠️ Un élève nommé "${localDup.nom} ${localDup.prenoms}" existe déjà dans votre liste (classe ${localDup.classe}).`
+      );
+      return;
     }
+
+    onAdd({ ...form, id: Date.now().toString() + Math.random().toString(36).slice(2) });
+    setForm(emptyEleve);
+    setDuplicateWarning(null);
   };
 
   const inputClass = (field: string) =>
@@ -143,7 +163,7 @@ export function StudentForm({ onAdd, isConfigured }: StudentFormProps) {
       <label className="block text-sm font-medium text-gray-700 mb-1">{label} *</label>
       <input
         type="tel"
-        value={form[field]}
+        value={form[field] as string}
         onChange={e => handlePhoneChange(field, e.target.value)}
         className={phoneInputClass(field)}
         placeholder={placeholder}
@@ -161,6 +181,25 @@ export function StudentForm({ onAdd, isConfigured }: StudentFormProps) {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Duplicate warning */}
+        {duplicateWarning && (
+          <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4 flex items-start gap-3 animate-slide-down">
+            <AlertTriangle size={20} className="text-red-500 mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-red-800 mb-1">Doublon détecté !</p>
+              <p className="text-sm text-red-700">{duplicateWarning}</p>
+              <p className="text-xs text-red-500 mt-2">Vérifiez le nom et les prénoms, ou ajoutez un élève différent.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setDuplicateWarning(null)}
+              className="text-red-400 hover:text-red-600 text-lg"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
         {/* Identity */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="bg-gradient-to-r from-ci-green to-ci-green-light px-5 py-3">
