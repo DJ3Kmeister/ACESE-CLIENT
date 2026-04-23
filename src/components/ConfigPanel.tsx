@@ -7,9 +7,10 @@ interface ConfigPanelProps {
   onSave: (config: SchoolConfig) => void;
   isConfigured: boolean;
   secteurs: SecteurInfo[];
+  onResetLocalConfig: () => void;
 }
 
-export function ConfigPanel({ config, onSave, isConfigured, secteurs }: ConfigPanelProps) {
+export function ConfigPanel({ config, onSave, isConfigured, secteurs, onResetLocalConfig }: ConfigPanelProps) {
   const [form, setForm] = useState<SchoolConfig>(config);
   const [errors, setErrors] = useState<Partial<Record<keyof SchoolConfig, string>>>({});
 
@@ -102,6 +103,19 @@ export function ConfigPanel({ config, onSave, isConfigured, secteurs }: ConfigPa
             </div>
           </>
         )}
+      </div>
+
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => {
+            const ok = window.confirm('Réinitialiser uniquement la configuration locale ? Les élèves ne seront pas effacés.');
+            if (ok) onResetLocalConfig();
+          }}
+          className="text-xs px-3 py-2 rounded-lg border border-gray-200 text-gray-500 hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition-colors"
+        >
+          Réinitialiser la config locale
+        </button>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
