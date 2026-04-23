@@ -331,12 +331,12 @@ export default function App() {
               </div>
               <div>
                 <h1 className="text-lg font-bold leading-tight">ACESE</h1>
-                <p className="text-xs text-green-200">IEPP GRABO • DRENAET San-Pédro</p>
+                <p className="text-xs text-green-200">DRENAET de SAN-PEDRO • IEPP de GRABO </p>
               </div>
             </div>
             <div className="flex items-center gap-2 md:gap-3">
               {/* Signature DJ3K */}
-              <span className="text-[7px] md:text-[8px] text-white/25 font-light leading-tight text-right max-w-[80px] md:max-w-none">
+              <span className="text-[7px] md:text-[12px] text-white/25 font-light leading-tight text-right max-w-[80px] md:max-w-none">
                 WebApp powered by<br />DJ3K S3PH1R0TH
               </span>
               <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
