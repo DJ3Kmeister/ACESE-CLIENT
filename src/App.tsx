@@ -186,6 +186,14 @@ export default function App() {
     showToast('info', 'Tous les élèves ont été supprimés');
   }, [saveEleves, showToast]);
 
+  // Reset local config only
+  const resetLocalConfig = useCallback(() => {
+    localStorage.removeItem('acese_config');
+    setConfig(DEFAULT_CONFIG);
+    setIsConfigured(false);
+    showToast('info', 'Configuration locale réinitialisée');
+  }, [showToast]);
+
   // Export local Excel (returns filename for archive)
   const doExport = useCallback((students: Eleve[]): string => {
     const rows = students.map((e, idx) => ({
@@ -331,12 +339,12 @@ export default function App() {
               </div>
               <div>
                 <h1 className="text-lg font-bold leading-tight">ACESE</h1>
-                <p className="text-xs text-green-200">DRENAET de SAN-PEDRO • IEPP de GRABO </p>
+                <p className="text-xs text-green-200">IEPP GRABO • DRENAET San-Pédro</p>
               </div>
             </div>
             <div className="flex items-center gap-2 md:gap-3">
               {/* Signature DJ3K */}
-              <span className="text-[7px] md:text-[12px] text-white/25 font-light leading-tight text-right max-w-[80px] md:max-w-none">
+              <span className="text-[7px] md:text-[8px] text-white/25 font-light leading-tight text-right max-w-[80px] md:max-w-none">
                 WebApp powered by<br />DJ3K S3PH1R0TH
               </span>
               <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
@@ -478,6 +486,7 @@ export default function App() {
               onSave={saveConfig}
               isConfigured={isConfigured}
               secteurs={secteurs}
+              onResetLocalConfig={resetLocalConfig}
             />
           )}
           {activeTab === 'ajouter' && (
