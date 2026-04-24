@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Save, School, User, Phone, Mail, CheckCircle, AlertCircle, Edit3, Lock } from 'lucide-react';
+import { Save, School, User, Phone, Mail, CheckCircle, AlertCircle, Edit3, Lock, KeyRound, Eye, EyeOff } from 'lucide-react';
 import type { SchoolConfig, SecteurInfo } from '../types';
+import { hashPassword, makeSalt } from '../utils/password';
 
 interface ConfigPanelProps {
   config: SchoolConfig;
@@ -13,6 +14,12 @@ interface ConfigPanelProps {
 export function ConfigPanel({ config, onSave, isConfigured, secteurs, onResetLocalConfig }: ConfigPanelProps) {
   const [form, setForm] = useState<SchoolConfig>(config);
   const [errors, setErrors] = useState<Partial<Record<keyof SchoolConfig, string>>>({});
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [authMessage, setAuthMessage] = useState<string>('');
+  const [authError, setAuthError] = useState<string>('');
+  const [isSaving, setIsSaving] = useState(false);
 
   // Get schools for the selected sector
   const selectedSecteur = secteurs.find(s => s.nom === form.secteur_pedagogique);
@@ -61,10 +68,79 @@ export function ConfigPanel({ config, onSave, isConfigured, secteurs, onResetLoc
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (validate()) {
-      onSave(form);
+    setAuthError('');
+    setAuthMessage('');
+
+    if (!validate()) return;
+
+    const needsPasswordSetup = !config.director_password_hash;
+    if (needsPasswordSetup || password || confirmPassword) {
+      if (!password || !confirmPassword) {
+        setAuthError('Veuillez entrer et confirmer le mot de passe.');
+        return;
+      }
+      if (password !== confirmPassword) {
+        setAuthError('Les mots de passe ne correspondent pas.');
+        return;
+      }
+    }
+
+    setIsSaving(true);
+    try {
+      let finalConfig = { ...form };
+
+      let passwordHash = config.director_password_hash || '';
+      let passwordSalt = config.director_password_salt || '';
+
+      if (password) {
+        const saltHex = makeSalt();
+        const hash = await hashPassword(password, saltHex);
+        passwordHash = hash;
+        passwordSalt = saltHex;
+        finalConfig = {
+          ...finalConfig,
+          director_password_hash: hash,
+          director_password_salt: saltHex,
+        };
+      } else if (config.director_password_hash && config.director_password_salt) {
+        finalConfig = {
+          ...finalConfig,
+          director_password_hash: config.director_password_hash,
+          director_password_salt: config.director_password_salt,
+        };
+      }
+
+      // Save profile to server for recovery whenever we have a password hash
+      if (passwordHash && passwordSalt) {
+        try {
+          await fetch(`${form.serverUrl}/api/director-profile`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              nom_directeur: finalConfig.nom_directeur,
+              prenoms_directeur: finalConfig.prenoms_directeur,
+              nom_ecole: finalConfig.nom_ecole,
+              secteur_pedagogique: finalConfig.secteur_pedagogique,
+              contact1: finalConfig.contact1,
+              contact2: finalConfig.contact2,
+              email: finalConfig.email,
+              password_hash: passwordHash,
+              password_salt: passwordSalt,
+            }),
+          });
+        } catch {
+          setAuthMessage('Configuration enregistrée localement. Le profil sera synchronisé plus tard.');
+        }
+      }
+
+      onSave(finalConfig);
+      setPassword('');
+      setConfirmPassword('');
+      setAuthMessage('Configuration enregistrée.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -290,13 +366,64 @@ export function ConfigPanel({ config, onSave, isConfigured, secteurs, onResetLoc
           </div>
         </div>
 
+        {/* Password section */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="bg-gradient-to-r from-slate-700 to-slate-900 px-5 py-3 flex items-center gap-2">
+            <KeyRound size={20} className="text-white" />
+            <h2 className="font-semibold text-white">Mot de passe du directeur</h2>
+          </div>
+          <div className="p-5 space-y-3">
+            <p className="text-sm text-gray-600">
+              Créez un mot de passe pour verrouiller l'application après 1 heure d'inactivité. Il vous sera demandé à la réouverture.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Mot de passe {config.director_password_hash ? '(nouveau seulement)' : '*'}</label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    className={inputClass('email')}
+                    placeholder={config.director_password_hash ? 'Laisser vide pour conserver' : 'Créer un mot de passe'}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(v => !v)}
+                    className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Confirmer le mot de passe</label>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  className={inputClass('email')}
+                  placeholder="Confirmer le mot de passe"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-gray-400">
+              Conseil: choisissez un mot de passe simple à retenir mais difficile à deviner.
+            </p>
+          </div>
+        </div>
+
+        {authError && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">{authError}</p>}
+        {authMessage && <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-4 py-3">{authMessage}</p>}
+
         {/* Submit button */}
         <button
           type="submit"
-          className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-ci-green to-ci-green-light text-white font-semibold rounded-xl shadow-lg shadow-green-200 hover:shadow-xl hover:scale-[1.01] active:scale-[0.99] transition-all"
+          disabled={isSaving}
+          className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-ci-green to-ci-green-light text-white font-semibold rounded-xl shadow-lg shadow-green-200 hover:shadow-xl hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-70 disabled:cursor-not-allowed"
         >
           <Save size={20} />
-          <span>{isConfigured ? 'Mettre à jour la configuration' : 'Enregistrer la configuration'}</span>
+          <span>{isSaving ? 'Enregistrement...' : isConfigured ? 'Mettre à jour la configuration' : 'Enregistrer la configuration'}</span>
         </button>
       </form>
     </div>

@@ -9,6 +9,8 @@ export interface SchoolConfig {
   contact2: string;
   email: string;
   serverUrl: string;
+  director_password_hash?: string;
+  director_password_salt?: string;
 }
 
 export interface Eleve {

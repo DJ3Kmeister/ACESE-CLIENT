@@ -12,6 +12,8 @@ import { StatsPanel } from './components/StatsPanel';
 import { SyncPanel } from './components/SyncPanel';
 import { Toast } from './components/Toast';
 import { TutorialOverlay } from './components/TutorialOverlay';
+import { DirectorLockScreen } from './components/DirectorLockScreen';
+import { hashPassword, makeSalt } from './utils/password';
 
 const DEFAULT_CONFIG: SchoolConfig = {
   drenaet: 'DRENAET San-Pédro',
@@ -49,6 +51,7 @@ export default function App() {
   });
   const [contactInfo, setContactInfo] = useState<{ contact_whatsapp?: string; contact_email?: string; contact_nom?: string }>({});
   const [showPendingAlert, setShowPendingAlert] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
 
   // Load saved data on mount
   useEffect(() => {
@@ -132,6 +135,42 @@ export default function App() {
     return () => clearInterval(interval);
   }, [isOnline]);
 
+  // Lock the app if a password exists and after 1h inactivity
+  useEffect(() => {
+    if (!config.director_password_hash) {
+      setIsLocked(false);
+      return;
+    }
+
+    const unlockedFlag = sessionStorage.getItem('acese_unlocked');
+    if (!unlockedFlag) {
+      setIsLocked(true);
+    }
+
+    let inactivityTimer = window.setTimeout(() => {
+      setIsLocked(true);
+      sessionStorage.removeItem('acese_unlocked');
+    }, 60 * 60 * 1000);
+
+    const resetTimer = () => {
+      window.clearTimeout(inactivityTimer);
+      if (!isLocked) {
+        inactivityTimer = window.setTimeout(() => {
+          setIsLocked(true);
+          sessionStorage.removeItem('acese_unlocked');
+        }, 60 * 60 * 1000);
+      }
+    };
+
+    const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart'];
+    events.forEach(evt => window.addEventListener(evt, resetTimer));
+
+    return () => {
+      window.clearTimeout(inactivityTimer);
+      events.forEach(evt => window.removeEventListener(evt, resetTimer));
+    };
+  }, [config.director_password_hash, isLocked]);
+
   // Monitor online status
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -149,6 +188,10 @@ export default function App() {
     setConfig(newConfig);
     localStorage.setItem('acese_config', JSON.stringify(newConfig));
     setIsConfigured(true);
+    if (newConfig.director_password_hash) {
+      sessionStorage.setItem('acese_unlocked', '1');
+      setIsLocked(false);
+    }
   }, []);
 
   // Toast notification (must be first since other callbacks use it)
@@ -189,10 +232,73 @@ export default function App() {
   // Reset local config only
   const resetLocalConfig = useCallback(() => {
     localStorage.removeItem('acese_config');
+    sessionStorage.removeItem('acese_unlocked');
     setConfig(DEFAULT_CONFIG);
     setIsConfigured(false);
+    setIsLocked(false);
     showToast('info', 'Configuration locale réinitialisée');
   }, [showToast]);
+
+  const unlockDirector = useCallback(async (password: string): Promise<boolean> => {
+    if (!config.director_password_hash || !config.director_password_salt) return true;
+    const computed = await hashPassword(password, config.director_password_salt);
+    const ok = computed === config.director_password_hash;
+    if (ok) {
+      sessionStorage.setItem('acese_unlocked', '1');
+      setIsLocked(false);
+      showToast('success', 'Mot de passe accepté');
+      return true;
+    }
+    return false;
+  }, [config.director_password_hash, config.director_password_salt, showToast]);
+
+  const recoverDirector = useCallback(async ({ nom_directeur, contact1, nom_ecole }: { nom_directeur: string; contact1: string; nom_ecole?: string; }) => {
+    try {
+      const res = await fetch(`${config.serverUrl}/api/director-recover`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nom_directeur, contact1, nom_ecole }),
+      });
+      const data = await res.json();
+      return { found: !!data.found, message: data.error || data.message };
+    } catch {
+      return { found: false, message: 'Impossible de joindre le serveur' };
+    }
+  }, [config.serverUrl]);
+
+  const resetDirectorPassword = useCallback(async (newPassword: string) => {
+    const salt = makeSalt();
+    const hash = await hashPassword(newPassword, salt);
+    const updated = {
+      ...config,
+      director_password_hash: hash,
+      director_password_salt: salt,
+    };
+    setConfig(updated);
+    localStorage.setItem('acese_config', JSON.stringify(updated));
+    try {
+      await fetch(`${config.serverUrl}/api/director-profile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nom_directeur: updated.nom_directeur,
+          prenoms_directeur: updated.prenoms_directeur,
+          nom_ecole: updated.nom_ecole,
+          secteur_pedagogique: updated.secteur_pedagogique,
+          contact1: updated.contact1,
+          contact2: updated.contact2,
+          email: updated.email,
+          password_hash: hash,
+          password_salt: salt,
+        }),
+      });
+    } catch {
+      // Server sync can be retried later
+    }
+    sessionStorage.setItem('acese_unlocked', '1');
+    setIsLocked(false);
+    showToast('success', 'Mot de passe réinitialisé avec succès');
+  }, [config, showToast]);
 
   // Export local Excel (returns filename for archive)
   const doExport = useCallback((students: Eleve[]): string => {
@@ -339,12 +445,12 @@ export default function App() {
               </div>
               <div>
                 <h1 className="text-lg font-bold leading-tight">ACESE</h1>
-                <p className="text-xs text-green-200">DRENAET de SAN-PEDRO • IEPP de GRABO</p>
+                <p className="text-xs text-green-200">IEPP GRABO • DRENAET San-Pédro</p>
               </div>
             </div>
             <div className="flex items-center gap-2 md:gap-3">
               {/* Signature DJ3K */}
-              <span className="text-[7px] md:text-[12px] text-white/25 font-light leading-tight text-right max-w-[80px] md:max-w-none">
+              <span className="text-[7px] md:text-[8px] text-white/25 font-light leading-tight text-right max-w-[80px] md:max-w-none">
                 WebApp powered by<br />DJ3K S3PH1R0TH
               </span>
               <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
@@ -530,7 +636,7 @@ export default function App() {
               WebApp powered by <span className="text-ci-green font-bold">DJ3K S3PH1R0TH</span>
             </p>
             <p className="text-[11px] text-gray-400 mt-0.5">
-              ACESE IEPP GRABO — DRENAET San-Pédro
+              ACESE IEPP GRABO — DRENAET San-Pédro — Côte d'Ivoire
             </p>
           </div>
 
@@ -602,6 +708,15 @@ export default function App() {
       {showTutorial && (
         <TutorialOverlay onComplete={completeTutorial} />
       )}
+
+      {/* Director password lock screen */}
+      <DirectorLockScreen
+        visible={isLocked}
+        config={config}
+        onUnlock={unlockDirector}
+        onRecover={recoverDirector}
+        onResetPassword={resetDirectorPassword}
+      />
     </div>
   );
 }
