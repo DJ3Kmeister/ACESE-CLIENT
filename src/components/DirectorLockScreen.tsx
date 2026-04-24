@@ -40,6 +40,8 @@ export function DirectorLockScreen({ visible, config, onUnlock, onRecover, onRes
     const result = await onRecover({ nom_directeur: recoveryName, contact1: recoveryPhone, nom_ecole: recoverySchool });
     if (result.found) {
       setMode('reset');
+      setNewPassword('');
+      setConfirmPassword('');
       setMessage('Identité vérifiée. Choisissez un nouveau mot de passe.');
     } else {
       setMessage(result.message || 'Aucun profil correspondant trouvé.');
@@ -111,7 +113,7 @@ export function DirectorLockScreen({ visible, config, onUnlock, onRecover, onRes
 
               <button
                 type="button"
-                onClick={() => { setMode('recover'); setMessage(''); }}
+                onClick={() => { setMode('recover'); setMessage(''); setPassword(''); }}
                 className="w-full text-sm text-gray-500 hover:text-ci-green transition-colors"
               >
                 Mot de passe oublié ?
@@ -180,7 +182,7 @@ export function DirectorLockScreen({ visible, config, onUnlock, onRecover, onRes
                 {loading ? 'Vérification...' : 'Vérifier mon identité'}
               </button>
 
-              <button type="button" onClick={() => { setMode('unlock'); setMessage(''); }} className="w-full text-sm text-gray-500 hover:text-ci-green transition-colors">
+              <button type="button" onClick={() => { setMode('unlock'); setMessage(''); setNewPassword(''); setConfirmPassword(''); }} className="w-full text-sm text-gray-500 hover:text-ci-green transition-colors">
                 Retour au mot de passe
               </button>
             </>

@@ -135,39 +135,44 @@ export default function App() {
     return () => clearInterval(interval);
   }, [isOnline]);
 
-  // Lock the app if a password exists and after 1h inactivity
+  // Lock app after 1h inactivity when a director password exists
   useEffect(() => {
     if (!config.director_password_hash) {
       setIsLocked(false);
+      sessionStorage.removeItem('acese_unlocked');
       return;
     }
 
     const unlockedFlag = sessionStorage.getItem('acese_unlocked');
     if (!unlockedFlag) {
       setIsLocked(true);
+      return;
     }
 
-    let inactivityTimer = window.setTimeout(() => {
-      setIsLocked(true);
-      sessionStorage.removeItem('acese_unlocked');
-    }, 60 * 60 * 1000);
+    let inactivityTimer: number | null = null;
 
-    const resetTimer = () => {
-      window.clearTimeout(inactivityTimer);
-      if (!isLocked) {
-        inactivityTimer = window.setTimeout(() => {
-          setIsLocked(true);
-          sessionStorage.removeItem('acese_unlocked');
-        }, 60 * 60 * 1000);
+    const startInactivityTimer = () => {
+      if (inactivityTimer) window.clearTimeout(inactivityTimer);
+      inactivityTimer = window.setTimeout(() => {
+        sessionStorage.removeItem('acese_unlocked');
+        setIsLocked(true);
+      }, 60 * 60 * 1000);
+    };
+
+    const onActivity = () => {
+      if (!isLocked && sessionStorage.getItem('acese_unlocked')) {
+        startInactivityTimer();
       }
     };
 
-    const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart'];
-    events.forEach(evt => window.addEventListener(evt, resetTimer));
+    startInactivityTimer();
+
+    const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
+    events.forEach(evt => window.addEventListener(evt, onActivity, { passive: true }));
 
     return () => {
-      window.clearTimeout(inactivityTimer);
-      events.forEach(evt => window.removeEventListener(evt, resetTimer));
+      if (inactivityTimer) window.clearTimeout(inactivityTimer);
+      events.forEach(evt => window.removeEventListener(evt, onActivity));
     };
   }, [config.director_password_hash, isLocked]);
 
@@ -599,6 +604,7 @@ export default function App() {
             <StudentForm
               onAdd={addEleve}
               isConfigured={isConfigured}
+              existingEleves={eleves}
             />
           )}
           {activeTab === 'liste' && (

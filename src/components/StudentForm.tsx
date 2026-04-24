@@ -5,6 +5,7 @@ import type { Eleve } from '../types';
 interface StudentFormProps {
   onAdd: (eleve: Eleve) => void;
   isConfigured: boolean;
+  existingEleves: Eleve[];
 }
 
 const emptyEleve: Omit<Eleve, 'id'> = {
@@ -25,23 +26,16 @@ const CLASSES = [
   'CP1', 'CP2', 'CE1', 'CE2', 'CM1', 'CM2'
 ];
 
-function checkLocalDuplicate(form: Omit<Eleve, 'id'>): Eleve | null {
-  const saved = localStorage.getItem('acese_eleves');
-  if (!saved) return null;
-  try {
-    const eleves: Eleve[] = JSON.parse(saved);
-    const nom = form.nom.trim().toUpperCase();
-    const prenoms = form.prenoms.trim().toUpperCase();
-    return eleves.find(e =>
-      e.nom.trim().toUpperCase() === nom &&
-      e.prenoms.trim().toUpperCase() === prenoms
-    ) || null;
-  } catch {
-    return null;
-  }
+function checkLocalDuplicate(form: Omit<Eleve, 'id'>, eleves: Eleve[]): Eleve | null {
+  const nom = form.nom.trim().toUpperCase();
+  const prenoms = form.prenoms.trim().toUpperCase();
+  return eleves.find(e =>
+    e.nom.trim().toUpperCase() === nom &&
+    e.prenoms.trim().toUpperCase() === prenoms
+  ) || null;
 }
 
-export function StudentForm({ onAdd, isConfigured }: StudentFormProps) {
+export function StudentForm({ onAdd, isConfigured, existingEleves }: StudentFormProps) {
   const [form, setForm] = useState<Omit<Eleve, 'id'>>(emptyEleve);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
@@ -131,7 +125,7 @@ export function StudentForm({ onAdd, isConfigured }: StudentFormProps) {
     if (!validate()) return;
 
     // Check local duplicates
-    const localDup = checkLocalDuplicate(form);
+    const localDup = checkLocalDuplicate(form, existingEleves);
     if (localDup) {
       setDuplicateWarning(
         `⚠️ Un élève nommé "${localDup.nom} ${localDup.prenoms}" existe déjà dans votre liste (classe ${localDup.classe}).`
