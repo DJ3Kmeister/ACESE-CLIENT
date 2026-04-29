@@ -15,17 +15,22 @@ export interface SchoolConfig {
 
 export interface Eleve {
   id: string;
+  matricule?: string;
   nom: string;
   prenoms: string;
-  sexe: 'M' | 'F';
+  sexe: 'G' | 'F';
+  nationalite: string;
   date_naissance_probable: string;
   classe: string;
   nom_pere: string;
   numero_pere: string;
+  cni_pere?: string;
   nom_mere: string;
   numero_mere: string;
+  cni_mere?: string;
   nom_temoin: string;
   numero_temoin: string;
+  cni_temoin?: string;
 }
 
 export type TabType = 'config' | 'ajouter' | 'liste' | 'stats' | 'sync';

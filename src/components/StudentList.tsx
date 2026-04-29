@@ -16,6 +16,7 @@ export function StudentList({ eleves, onRemove, onClear, config, onExport, onArc
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [viewStudent, setViewStudent] = useState<Eleve | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
+  const isGarcon = (sexe: string) => sexe === 'G' || sexe === 'M';
 
   const filtered = eleves.filter(e => {
     const q = search.toLowerCase();
@@ -41,7 +42,7 @@ export function StudentList({ eleves, onRemove, onClear, config, onExport, onArc
     }
   };
 
-  const garcons = eleves.filter(e => e.sexe === 'M').length;
+  const garcons = eleves.filter(e => isGarcon(e.sexe)).length;
   const filles = eleves.filter(e => e.sexe === 'F').length;
 
   const printFiche = () => {
@@ -73,20 +74,25 @@ export function StudentList({ eleves, onRemove, onClear, config, onExport, onArc
           <p>${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
         </div>
         <div class="name">${viewStudent.nom} ${viewStudent.prenoms}</div>
-        <div class="row"><span class="label">Sexe</span><span class="value">${viewStudent.sexe === 'M' ? '♂ Masculin' : '♀ Féminin'}</span></div>
+        <div class="row"><span class="label">Matricule / identifiant</span><span class="value">${viewStudent.matricule || '-'}</span></div>
+        <div class="row"><span class="label">Sexe</span><span class="value">${isGarcon(viewStudent.sexe) ? 'Garçon' : 'Fille'}</span></div>
+        <div class="row"><span class="label">Nationalité</span><span class="value">${viewStudent.nationalite || '-'}</span></div>
         <div class="row"><span class="label">Date de naissance</span><span class="value">${viewStudent.date_naissance_probable}</span></div>
         <div class="row"><span class="label">Classe</span><span class="value">${viewStudent.classe}</span></div>
         <div class="section"><h3>👨 Père</h3>
           <div class="row"><span class="label">Nom</span><span class="value">${viewStudent.nom_pere}</span></div>
           <div class="row"><span class="label">Téléphone</span><span class="value">${viewStudent.numero_pere}</span></div>
+          <div class="row"><span class="label">CNI / Pièce</span><span class="value">${viewStudent.cni_pere || '-'}</span></div>
         </div>
         <div class="section"><h3>👩 Mère</h3>
           <div class="row"><span class="label">Nom</span><span class="value">${viewStudent.nom_mere}</span></div>
           <div class="row"><span class="label">Téléphone</span><span class="value">${viewStudent.numero_mere}</span></div>
+          <div class="row"><span class="label">CNI / Pièce</span><span class="value">${viewStudent.cni_mere || '-'}</span></div>
         </div>
         <div class="section"><h3>🤝 Témoin</h3>
           <div class="row"><span class="label">Nom</span><span class="value">${viewStudent.nom_temoin}</span></div>
           <div class="row"><span class="label">Téléphone</span><span class="value">${viewStudent.numero_temoin}</span></div>
+          <div class="row"><span class="label">CNI / Pièce</span><span class="value">${viewStudent.cni_temoin || '-'}</span></div>
         </div>
         <div class="footer">ACESE IEPP GRABO — DRENAET San-Pédro<br>Fiche générée le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</div>
         <script>window.onload=function(){window.print();}<\/script>
@@ -196,7 +202,7 @@ export function StudentList({ eleves, onRemove, onClear, config, onExport, onArc
                 className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
               >
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ${
-                  eleve.sexe === 'M' ? 'bg-sky-500' : 'bg-pink-500'
+                  isGarcon(eleve.sexe) ? 'bg-sky-500' : 'bg-pink-500'
                 }`}>
                   {eleve.nom.charAt(0)}
                 </div>
@@ -205,7 +211,7 @@ export function StudentList({ eleves, onRemove, onClear, config, onExport, onArc
                     {idx + 1}. {eleve.nom} {eleve.prenoms}
                   </p>
                   <p className="text-xs text-gray-500 truncate">
-                    Né(e) le {eleve.date_naissance_probable} • {eleve.sexe === 'M' ? '♂' : '♀'}
+                    Né(e) le {eleve.date_naissance_probable} • {isGarcon(eleve.sexe) ? 'Garçon' : 'Fille'} • {eleve.nationalite || '—'}
                   </p>
                 </div>
                 <div className="flex items-center gap-1">
@@ -245,7 +251,7 @@ export function StudentList({ eleves, onRemove, onClear, config, onExport, onArc
             <div className="bg-gradient-to-r from-ci-green to-ci-green-light p-5 flex items-center justify-between">
               <div className="flex items-center gap-3 text-white">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
-                  viewStudent.sexe === 'M' ? 'bg-sky-400' : 'bg-pink-400'
+                  isGarcon(viewStudent.sexe) ? 'bg-sky-400' : 'bg-pink-400'
                 }`}>
                   <User size={20} />
                 </div>
@@ -271,11 +277,19 @@ export function StudentList({ eleves, onRemove, onClear, config, onExport, onArc
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <p className="text-gray-500 text-xs">Sexe</p>
-                  <p className="font-medium">{viewStudent.sexe === 'M' ? 'Masculin ♂' : 'Féminin ♀'}</p>
+                  <p className="font-medium">{isGarcon(viewStudent.sexe) ? 'Garçon' : 'Fille'}</p>
                 </div>
                 <div>
                   <p className="text-gray-500 text-xs">Date de naissance</p>
                   <p className="font-medium">{viewStudent.date_naissance_probable}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500 text-xs">Matricule / identifiant</p>
+                  <p className="font-medium">{viewStudent.matricule || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500 text-xs">Nationalité</p>
+                  <p className="font-medium">{viewStudent.nationalite || '—'}</p>
                 </div>
               </div>
               <hr />
@@ -283,16 +297,19 @@ export function StudentList({ eleves, onRemove, onClear, config, onExport, onArc
                 <p className="text-xs font-semibold text-blue-600 mb-2">👨 Père</p>
                 <p className="font-medium">{viewStudent.nom_pere}</p>
                 <p className="text-gray-500">{viewStudent.numero_pere}</p>
+                {viewStudent.cni_pere && <p className="text-gray-500">Pièce: {viewStudent.cni_pere}</p>}
               </div>
               <div>
                 <p className="text-xs font-semibold text-pink-600 mb-2">👩 Mère</p>
                 <p className="font-medium">{viewStudent.nom_mere}</p>
                 <p className="text-gray-500">{viewStudent.numero_mere}</p>
+                {viewStudent.cni_mere && <p className="text-gray-500">Pièce: {viewStudent.cni_mere}</p>}
               </div>
               <div>
                 <p className="text-xs font-semibold text-amber-600 mb-2">🤝 Témoin</p>
                 <p className="font-medium">{viewStudent.nom_temoin}</p>
                 <p className="text-gray-500">{viewStudent.numero_temoin}</p>
+                {viewStudent.cni_temoin && <p className="text-gray-500">Pièce: {viewStudent.cni_temoin}</p>}
               </div>
             </div>
           </div>

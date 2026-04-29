@@ -14,6 +14,7 @@ interface SyncPanelProps {
 export function SyncPanel({ eleves, config, isOnline, isConfigured, onSync, onExport }: SyncPanelProps) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncResult, setLastSyncResult] = useState<'success' | 'error' | null>(null);
+  const isGarcon = (sexe: string) => sexe === 'G' || sexe === 'M';
 
   const handleSync = async () => {
     setIsSyncing(true);
@@ -94,7 +95,7 @@ export function SyncPanel({ eleves, config, isOnline, isConfigured, onSync, onEx
           {eleves.length > 0 && (
             <div className="flex gap-3 pt-2">
               <div className="bg-sky-50 rounded-lg px-3 py-1.5 text-center flex-1">
-                <p className="text-lg font-bold text-sky-600">{eleves.filter(e => e.sexe === 'M').length}</p>
+                <p className="text-lg font-bold text-sky-600">{eleves.filter(e => isGarcon(e.sexe)).length}</p>
                 <p className="text-xs text-sky-500">Garçons</p>
               </div>
               <div className="bg-pink-50 rounded-lg px-3 py-1.5 text-center flex-1">

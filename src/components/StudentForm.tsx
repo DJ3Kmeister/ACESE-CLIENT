@@ -9,21 +9,32 @@ interface StudentFormProps {
 }
 
 const emptyEleve: Omit<Eleve, 'id'> = {
+  matricule: '',
   nom: '',
   prenoms: '',
-  sexe: 'M',
+  sexe: 'G',
+  nationalite: 'IVOIRIENNE',
   date_naissance_probable: '',
   classe: '',
   nom_pere: '',
   numero_pere: '',
+  cni_pere: '',
   nom_mere: '',
   numero_mere: '',
+  cni_mere: '',
   nom_temoin: '',
   numero_temoin: '',
+  cni_temoin: '',
 };
 
 const CLASSES = [
   'CP1', 'CP2', 'CE1', 'CE2', 'CM1', 'CM2'
+];
+
+const NATIONALITES = [
+  'IVOIRIENNE', 'BURKINABÈ', 'MALIENNE', 'GUINÉENNE', 'LIBÉRIENNE',
+  'GHANÉENNE', 'TOGOLAISE', 'BÉNINOISE', 'NIGÉRIENNE', 'SÉNÉGALAISE',
+  'NIGÉRIENNE', 'AUTRE'
 ];
 
 function checkLocalDuplicate(form: Omit<Eleve, 'id'>, eleves: Eleve[]): Eleve | null {
@@ -101,6 +112,7 @@ export function StudentForm({ onAdd, isConfigured, existingEleves }: StudentForm
     const newErrors: Record<string, string> = {};
     if (!form.nom.trim()) newErrors.nom = 'Nom requis';
     if (!form.prenoms.trim()) newErrors.prenoms = 'Prénoms requis';
+    if (!form.nationalite?.trim()) newErrors.nationalite = 'Nationalité requise';
     if (!form.date_naissance_probable.trim()) {
       newErrors.date_naissance_probable = 'Date requise';
     } else if (!/^\d{2}\/\d{2}\/\d{4}$/.test(form.date_naissance_probable)) {
@@ -200,7 +212,17 @@ export function StudentForm({ onAdd, isConfigured, existingEleves }: StudentForm
             <h3 className="font-semibold text-white text-sm">🪪 Identité de l'élève</h3>
           </div>
           <div className="p-4 space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Matricule / identifiant (facultatif)</label>
+                <input
+                  type="text"
+                  value={form.matricule || ''}
+                  onChange={e => handleChange('matricule', e.target.value.toUpperCase())}
+                  className={inputClass('matricule')}
+                  placeholder="Ex: MAT-001"
+                />
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nom *</label>
                 <input
@@ -224,7 +246,7 @@ export function StudentForm({ onAdd, isConfigured, existingEleves }: StudentForm
                 {errors.prenoms && <p className="text-xs text-red-500 mt-1">{errors.prenoms}</p>}
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Sexe *</label>
                 <select
@@ -232,9 +254,22 @@ export function StudentForm({ onAdd, isConfigured, existingEleves }: StudentForm
                   onChange={e => handleChange('sexe', e.target.value)}
                   className={inputClass('sexe')}
                 >
-                  <option value="M">Masculin</option>
-                  <option value="F">Féminin</option>
+                  <option value="G">Garçon</option>
+                  <option value="F">Fille</option>
                 </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nationalité *</label>
+                <select
+                  value={form.nationalite || ''}
+                  onChange={e => handleChange('nationalite', e.target.value)}
+                  className={inputClass('nationalite')}
+                >
+                  {NATIONALITES.map(n => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+                {errors.nationalite && <p className="text-xs text-red-500 mt-1">{errors.nationalite}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Date de naissance *</label>
@@ -290,7 +325,7 @@ export function StudentForm({ onAdd, isConfigured, existingEleves }: StudentForm
             <h3 className="font-semibold text-white text-sm">👨 Informations du père</h3>
           </div>
           <div className="p-4 space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nom du père *</label>
                 <input
@@ -303,6 +338,16 @@ export function StudentForm({ onAdd, isConfigured, existingEleves }: StudentForm
                 {errors.nom_pere && <p className="text-xs text-red-500 mt-1">{errors.nom_pere}</p>}
               </div>
               {renderPhoneField('numero_pere', 'Numéro du père', '07 XX XX XX XX')}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">N° CNI / Pièce d'identité (facultatif)</label>
+                <input
+                  type="text"
+                  value={form.cni_pere || ''}
+                  onChange={e => handleChange('cni_pere', e.target.value.toUpperCase())}
+                  className={inputClass('cni_pere')}
+                  placeholder="Ex: CNI123456"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -313,7 +358,7 @@ export function StudentForm({ onAdd, isConfigured, existingEleves }: StudentForm
             <h3 className="font-semibold text-white text-sm">👩 Informations de la mère</h3>
           </div>
           <div className="p-4 space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nom de la mère *</label>
                 <input
@@ -326,6 +371,16 @@ export function StudentForm({ onAdd, isConfigured, existingEleves }: StudentForm
                 {errors.nom_mere && <p className="text-xs text-red-500 mt-1">{errors.nom_mere}</p>}
               </div>
               {renderPhoneField('numero_mere', 'Numéro de la mère', '05 XX XX XX XX')}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">N° CNI / Pièce d'identité (facultatif)</label>
+                <input
+                  type="text"
+                  value={form.cni_mere || ''}
+                  onChange={e => handleChange('cni_mere', e.target.value.toUpperCase())}
+                  className={inputClass('cni_mere')}
+                  placeholder="Ex: CNI123456"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -336,7 +391,7 @@ export function StudentForm({ onAdd, isConfigured, existingEleves }: StudentForm
             <h3 className="font-semibold text-white text-sm">🤝 Informations du témoin</h3>
           </div>
           <div className="p-4 space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nom du témoin *</label>
                 <input
@@ -349,6 +404,16 @@ export function StudentForm({ onAdd, isConfigured, existingEleves }: StudentForm
                 {errors.nom_temoin && <p className="text-xs text-red-500 mt-1">{errors.nom_temoin}</p>}
               </div>
               {renderPhoneField('numero_temoin', 'Numéro du témoin', '01 XX XX XX XX')}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">N° CNI / Pièce d'identité (facultatif)</label>
+                <input
+                  type="text"
+                  value={form.cni_temoin || ''}
+                  onChange={e => handleChange('cni_temoin', e.target.value.toUpperCase())}
+                  className={inputClass('cni_temoin')}
+                  placeholder="Ex: CNI123456"
+                />
+              </div>
             </div>
           </div>
         </div>

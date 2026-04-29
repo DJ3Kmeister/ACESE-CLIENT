@@ -309,24 +309,30 @@ export default function App() {
   const doExport = useCallback((students: Eleve[]): string => {
     const rows = students.map((e, idx) => ({
       'N°': idx + 1,
+      'Matricule / Identifiant': e.matricule || '',
       'Nom': e.nom,
       'Prénoms': e.prenoms,
-      'Sexe': e.sexe === 'M' ? 'Masculin' : 'Féminin',
+      'Sexe': (e.sexe === 'G' || (e.sexe as string) === 'M') ? 'Garçon' : 'Fille',
+      'Nationalité': e.nationalite || '',
       'Date Naissance': e.date_naissance_probable,
       'Classe': e.classe,
       'Nom Père': e.nom_pere,
       'N° Père': e.numero_pere,
+      'CNI/Pièce Père': e.cni_pere || '',
       'Nom Mère': e.nom_mere,
       'N° Mère': e.numero_mere,
+      'CNI/Pièce Mère': e.cni_mere || '',
       'Nom Témoin': e.nom_temoin,
       'N° Témoin': e.numero_temoin,
+      'CNI/Pièce Témoin': e.cni_temoin || '',
     }));
 
     const ws = XLSX.utils.json_to_sheet(rows);
     ws['!cols'] = [
       { wch: 5 }, { wch: 15 }, { wch: 15 }, { wch: 10 },
       { wch: 14 }, { wch: 8 }, { wch: 15 }, { wch: 12 },
-      { wch: 15 }, { wch: 12 }, { wch: 15 }, { wch: 12 },
+      { wch: 15 }, { wch: 12 }, { wch: 16 }, { wch: 15 },
+      { wch: 12 }, { wch: 16 }, { wch: 15 }, { wch: 12 }, { wch: 16 },
     ];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Élèves');

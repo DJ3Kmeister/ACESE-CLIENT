@@ -44,7 +44,7 @@ const STEPS: Step[] = [
     subtitle: 'Onglet ➕ Ajouter — Un formulaire par élève',
     instructions: [
       'Remplissez le NOM (en majuscules) et les Prénoms de l\'élève.',
-      'Choisissez Masculin ou Féminin.',
+      'Choisissez Garçon ou Fille.',
       'Pour la date : tapez les 8 chiffres (ex: 01062014 → 01/06/2014) ou utilisez le bouton 📅.',
       'Choisissez la classe : CP1, CP2, CE1, CE2, CM1 ou CM2.',
       'Remplissez les infos du père, de la mère et du témoin.',

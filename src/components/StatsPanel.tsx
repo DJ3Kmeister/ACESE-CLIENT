@@ -7,7 +7,8 @@ interface StatsPanelProps {
 }
 
 export function StatsPanel({ eleves, config }: StatsPanelProps) {
-  const garcons = eleves.filter(e => e.sexe === 'M');
+  const isGarcon = (sexe: string) => sexe === 'G' || sexe === 'M';
+  const garcons = eleves.filter(e => isGarcon(e.sexe));
   const filles = eleves.filter(e => e.sexe === 'F');
 
   // Group by class
@@ -16,7 +17,7 @@ export function StatsPanel({ eleves, config }: StatsPanelProps) {
     const c = e.classe || 'Non classé';
     if (!parClasse[c]) parClasse[c] = { total: 0, garcons: 0, filles: 0 };
     parClasse[c].total++;
-    if (e.sexe === 'M') parClasse[c].garcons++;
+    if (isGarcon(e.sexe)) parClasse[c].garcons++;
     else parClasse[c].filles++;
   });
 
