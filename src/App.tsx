@@ -673,7 +673,7 @@ export default function App() {
               WebApp powered by <span className="text-ci-green font-bold">DJ3K S3PH1R0TH</span>
             </p>
             <p className="text-[11px] text-gray-400 mt-0.5">
-              ACESE IEPP GRABO — DRENAET San-Pédro — Côte d'Ivoire
+              ACESE IEPP GRABO — DRENAET San-Pédro
             </p>
           </div>
 
