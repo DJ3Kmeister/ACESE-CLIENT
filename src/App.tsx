@@ -13,6 +13,7 @@ import { SyncPanel } from './components/SyncPanel';
 import { Toast } from './components/Toast';
 import { TutorialOverlay } from './components/TutorialOverlay';
 import { DirectorLockScreen } from './components/DirectorLockScreen';
+import { DirectorLoginScreen } from './components/DirectorLoginScreen';
 import { hashPassword, makeSalt } from './utils/password';
 
 const DEFAULT_CONFIG: SchoolConfig = {
@@ -443,6 +444,30 @@ export default function App() {
     localStorage.setItem('acese_tutorial_done', 'true');
     setShowTutorial(false);
   }, []);
+
+  const handleDirectorLoginSuccess = useCallback((loginConfig: SchoolConfig) => {
+    const finalConfig = {
+      ...DEFAULT_CONFIG,
+      ...loginConfig,
+      serverUrl: DEFAULT_CONFIG.serverUrl,
+    };
+    setConfig(finalConfig);
+    localStorage.setItem('acese_config', JSON.stringify(finalConfig));
+    setIsConfigured(true);
+    sessionStorage.setItem('acese_unlocked', '1');
+    setIsLocked(false);
+    showToast('success', 'Connexion réussie. École configurée automatiquement.');
+  }, [showToast]);
+
+  if (!isConfigured) {
+    return (
+      <DirectorLoginScreen
+        serverUrl={DEFAULT_CONFIG.serverUrl}
+        isOnline={isOnline}
+        onLoginSuccess={handleDirectorLoginSuccess}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-orange-50">

@@ -24,8 +24,12 @@ export function ConfigPanel({ config, onSave, isConfigured, secteurs, onResetLoc
   // Get schools for the selected sector
   const selectedSecteur = secteurs.find(s => s.nom === form.secteur_pedagogique);
   const ecoles = selectedSecteur?.ecoles || [];
+  const isProvisioned = !!config.is_admin_provisioned;
 
   const handleChange = (field: keyof SchoolConfig, value: string) => {
+    if (isProvisioned && ['secteur_pedagogique', 'nom_ecole', 'nom_directeur', 'prenoms_directeur', 'contact1'].includes(field)) {
+      return;
+    }
     // If changing sector, reset school
     if (field === 'secteur_pedagogique') {
       setForm(prev => ({ ...prev, [field]: value, nom_ecole: '' }));
@@ -38,6 +42,7 @@ export function ConfigPanel({ config, onSave, isConfigured, secteurs, onResetLoc
   };
 
   const handlePhoneChange = (field: 'contact1' | 'contact2', value: string) => {
+    if (isProvisioned && field === 'contact1') return;
     const digits = value.replace(/\D/g, '').slice(0, 10);
     setForm(prev => ({ ...prev, [field]: digits }));
     if (errors[field]) {
@@ -194,6 +199,13 @@ export function ConfigPanel({ config, onSave, isConfigured, secteurs, onResetLoc
         </button>
       </div>
 
+      {isProvisioned && (
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-700">
+          <p className="font-semibold">Compte directeur géré par l'administrateur</p>
+          <p className="text-xs mt-1">Votre école, secteur, nom et téléphone principal sont verrouillés. En cas d'erreur, contactez l'administrateur.</p>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* School info section */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -238,7 +250,8 @@ export function ConfigPanel({ config, onSave, isConfigured, secteurs, onResetLoc
                 <select
                   value={form.secteur_pedagogique}
                   onChange={e => handleChange('secteur_pedagogique', e.target.value)}
-                  className={inputClass('secteur_pedagogique')}
+                  disabled={isProvisioned}
+                  className={isProvisioned ? lockedInputClass : inputClass('secteur_pedagogique')}
                 >
                   <option value="">— Sélectionner un secteur —</option>
                   {secteurs.map(s => (
@@ -253,7 +266,8 @@ export function ConfigPanel({ config, onSave, isConfigured, secteurs, onResetLoc
                   <select
                     value={form.nom_ecole}
                     onChange={e => handleChange('nom_ecole', e.target.value)}
-                    className={inputClass('nom_ecole')}
+                    disabled={isProvisioned}
+                    className={isProvisioned ? lockedInputClass : inputClass('nom_ecole')}
                   >
                     <option value="">— Sélectionner votre école —</option>
                     {ecoles.map(e => (
@@ -265,7 +279,8 @@ export function ConfigPanel({ config, onSave, isConfigured, secteurs, onResetLoc
                     type="text"
                     value={form.nom_ecole}
                     onChange={e => handleChange('nom_ecole', e.target.value)}
-                    className={inputClass('nom_ecole')}
+                    readOnly={isProvisioned}
+                    className={isProvisioned ? lockedInputClass : inputClass('nom_ecole')}
                     placeholder="EPP GNATO"
                   />
                 )}
@@ -292,7 +307,8 @@ export function ConfigPanel({ config, onSave, isConfigured, secteurs, onResetLoc
                   type="text"
                   value={form.nom_directeur}
                   onChange={e => handleChange('nom_directeur', e.target.value.toUpperCase())}
-                  className={inputClass('nom_directeur')}
+                  readOnly={isProvisioned}
+                  className={isProvisioned ? lockedInputClass : inputClass('nom_directeur')}
                   placeholder="Ex: KONÉ"
                 />
                 {errors.nom_directeur && <p className="text-xs text-red-500 mt-1">{errors.nom_directeur}</p>}
@@ -303,7 +319,8 @@ export function ConfigPanel({ config, onSave, isConfigured, secteurs, onResetLoc
                   type="text"
                   value={form.prenoms_directeur}
                   onChange={e => handleChange('prenoms_directeur', e.target.value)}
-                  className={inputClass('prenoms_directeur')}
+                  readOnly={isProvisioned}
+                  className={isProvisioned ? lockedInputClass : inputClass('prenoms_directeur')}
                   placeholder="Ex: Amadou"
                 />
                 {errors.prenoms_directeur && <p className="text-xs text-red-500 mt-1">{errors.prenoms_directeur}</p>}
@@ -327,7 +344,8 @@ export function ConfigPanel({ config, onSave, isConfigured, secteurs, onResetLoc
                     type="tel"
                     value={form.contact1}
                     onChange={e => handlePhoneChange('contact1', e.target.value)}
-                    className={inputClass('contact1')}
+                    readOnly={isProvisioned}
+                    className={isProvisioned ? lockedInputClass : inputClass('contact1')}
                     placeholder="07 XX XX XX XX"
                     maxLength={10}
                   />
@@ -367,6 +385,7 @@ export function ConfigPanel({ config, onSave, isConfigured, secteurs, onResetLoc
         </div>
 
         {/* Password section */}
+        {!isProvisioned && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="bg-gradient-to-r from-slate-700 to-slate-900 px-5 py-3 flex items-center gap-2">
             <KeyRound size={20} className="text-white" />
@@ -412,6 +431,7 @@ export function ConfigPanel({ config, onSave, isConfigured, secteurs, onResetLoc
             </p>
           </div>
         </div>
+        )}
 
         {authError && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">{authError}</p>}
         {authMessage && <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-4 py-3">{authMessage}</p>}

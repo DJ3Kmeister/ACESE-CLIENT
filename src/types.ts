@@ -11,6 +11,9 @@ export interface SchoolConfig {
   serverUrl: string;
   director_password_hash?: string;
   director_password_salt?: string;
+  director_username?: string;
+  director_account_id?: number;
+  is_admin_provisioned?: boolean;
 }
 
 export interface Eleve {
